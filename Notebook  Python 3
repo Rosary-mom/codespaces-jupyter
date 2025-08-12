@@ -1,0 +1,42 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Definiere Kern-Axiome als Funktionen
+def skaleninvarianz_reichweite(scale_factor):
+ """Skaleninvarianz: Reichweite R skaliert invariant über Ebenen (z.B. Zelle zu Kosmos)."""
+ return np.sqrt(scale_factor) # Einfache Wurzel als Proxy für Invarianz
+
+def ueberlebens_konstante_Q(R, risikofaktor):
+ """Q als Überlebenskonstante: Q = R² * (1 - Risikofaktor)."""
+ return R**2 * (1 - risikofaktor)
+
+def rosenkranz_approximation(Q_start, iterations=5, unsicherheit=0.1):
+ """Rosenkranz-Approximation: Iterative Serie zur Reduktion von Unsicherheiten.
+ Jede Iteration addiert eine 'Perle' (Schritt) zur Näherung."""
+ Q_approx = Q_start
+ for i in range(1, iterations + 1):
+ Q_approx += (-1)**i * (unsicherheit**i / i) # Alternierende Serie (inspiriert von ln(1+x)-Näherung)
+ return Q_approx
+
+# Simulation: Verkehrsszenario (Wahrnehmungsunschärfe )
+# Annahme: Risikofaktor steigt mit Geschwindigkeit, Scale von 1 (ruhend) bis 100 (hochgeschwindig)
+scales = np.linspace(1, 100, 100) # Skalenstufen
+risikofaktoren = np.random.uniform(0.05, 0.3, 100) # Zufällige Unsicherheiten (z.B. Nebel, Ablenkung)
+
+Q_werte = []
+for scale, risiko in zip(scales, risikofaktoren):
+ R = skaleninvarianz_reichweite(scale)
+ Q_basis = ueberlebens_konstante_Q(R, risiko)
+ Q_optimiert = rosenkranz_approximation(Q_basis, iterations=10, unsicherheit=risiko)
+ Q_werte.append(Q_optimiert)
+
+# Visualisierung
+plt.plot(scales, Q_werte, label='Optimierte Q (Überlebenswahrscheinlichkeit)')
+plt.xlabel('Skalenstufe (z.B. Geschwindigkeit)')
+plt.ylabel('Q-Wert')
+plt.title('Simulation: Q-Optimierung in Verkehrssicherheit')
+plt.legend()
+plt.show()
+
+# Beispiel-Ausgabe: Durchschnittliche Q
+print(f"Durchschnittliche optimierte Q: {np.mean(Q_werte):.2f}")
