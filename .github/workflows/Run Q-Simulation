@@ -1,41 +1,32 @@
-name: Q-Simulation CI  # Besserer Name für Klarheit
+name: Run Q-Simulation
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-  workflow_dispatch:  # Manueller Trigger bleibt
+    branches: [ main ]  # Triggt bei jedem Push auf main
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # Bleibt auf Linux für Speed
+    runs-on: ubuntu-latest  # Linux-VM für die Ausführung
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4  # Holt dein Repo – essenziell für alle Steps
+    - name: Checkout code
+      uses: actions/checkout@v4  # Holt dein Repo
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'  # Passe an deine Version an (z. B. 3.12 für Kompatibilität mit numpy etc.)
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'  # Deine Version aus dem Screenshot
 
-      - name: Install dependencies
-        run: |
-          pip install numpy matplotlib  # Füge mehr hinzu, z. B. sympy pandas jupyter, je nach Bedarf
-          # Wenn du Jupyter brauchst: pip install jupyter nbconvert
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install qutip numpy matplotlib  # Füge bei Bedarf mehr hinzu (z. B. qutip-qip, falls du den importierten CNOT brauchst)
 
-      - name: Run Q-Simulation
-        run: python notebooks/Q_Simulation_Verkehr.py  # Ersetze durch deinen Pfad/Dateinamen (z. B. wenn es .py ist)
-        # Für Jupyter-Notebook: jupyter nbconvert --to notebook --execute notebooks/Q_Simulation_Verkehr.ipynb --output executed.ipynb
+    - name: Run the simulation
+      run: python Q-Simulation_verkehr.py  # Führt deinen Code aus – Ausgaben landen in den Logs
 
-      - name: Test for errors
-        run: echo "Hier könnte ein Unit-Test kommen, z. B. pytest tests/"  # Optional: Installiere pytest und teste Funktionen
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: simulation-output
-          path: |  # Lade Outputs hoch, z. B. Plots oder Logs
-            *.png
-            *.pdf
-            executed.ipynb
+    - name: Upload Bloch sphere image
+      uses: actions/upload-artifact@v4
+      with:
+        name: bloch-verkehr
+        path: bloch_verkehr.png  # Speichert das PNG als Artifact (kannst herunterladen)
