@@ -1,16 +1,41 @@
-name: CI  # Das ist der Workflow-Name – ändere zu etwas Passendem, z.B. "Test Simulation"
+name: Q-Simulation CI  # Besserer Name für Klarheit
 
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-  workflow_dispatch:  # Ermöglicht manuellen Trigger
+  workflow_dispatch:  # Manueller Trigger bleibt
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Bleibt auf Linux für Speed
     steps:
-      - uses: actions/checkout@v4
-      - name: Run a one-line script
-        run: echo Hello, world!  # Test-Befehl – ersetze später durch Python-Tests, z.B. python your_script.py
+      - name: Checkout code
+        uses: actions/checkout@v4  # Holt dein Repo – essenziell für alle Steps
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'  # Passe an deine Version an (z. B. 3.12 für Kompatibilität mit numpy etc.)
+
+      - name: Install dependencies
+        run: |
+          pip install numpy matplotlib  # Füge mehr hinzu, z. B. sympy pandas jupyter, je nach Bedarf
+          # Wenn du Jupyter brauchst: pip install jupyter nbconvert
+
+      - name: Run Q-Simulation
+        run: python notebooks/Q_Simulation_Verkehr.py  # Ersetze durch deinen Pfad/Dateinamen (z. B. wenn es .py ist)
+        # Für Jupyter-Notebook: jupyter nbconvert --to notebook --execute notebooks/Q_Simulation_Verkehr.ipynb --output executed.ipynb
+
+      - name: Test for errors
+        run: echo "Hier könnte ein Unit-Test kommen, z. B. pytest tests/"  # Optional: Installiere pytest und teste Funktionen
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulation-output
+          path: |  # Lade Outputs hoch, z. B. Plots oder Logs
+            *.png
+            *.pdf
+            executed.ipynb
