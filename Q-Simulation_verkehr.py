@@ -57,18 +57,23 @@ bell_state = (qt.tensor(psi0, psi0) + qt.tensor(psi1, psi1)).unit()
 
 # Model traffic interaction: Apply a CNOT gate to entangle them further if needed
 # Here, Ampel 1 controls Ampel 2
-cnot = qt.cnot(N=2, control=0, target=1)
+cnot_matrix = np.array([[1, 0, 0, 0],
+                        [0, 1, 0, 0],
+                        [0, 0, 0, 1],
+                        [0, 0, 1, 0]])
+cnot = qt.Qobj(cnot_matrix, dims=[[2, 2], [2, 2]])
 entangled_state = cnot * bell_state
 
-# Add noise: Bit-flip error channel to simulate unpredictable disturbances (e.g., accident)
-p_flip = 0.1  # Probability of bit-flip (10%)
-bit_flip_op = [np.sqrt(1 - p_flip) * qt.tensor(qt.qeye(2), qt.qeye(2)),
-               np.sqrt(p_flip) * qt.tensor(qt.sigmax(), qt.qeye(2)),
-               np.sqrt(p_flip) * qt.tensor(qt.qeye(2), qt.sigmax()),
-               np.sqrt(p_flip/2) * qt.tensor(qt.sigmax(), qt.sigmax())]  # Approximate for two qubits
+# Convert to density matrix for noise application
+rho = entangled_state * entangled_state.dag()
 
-# Apply the noise channel to the entangled state
-noisy_state = sum([op * entangled_state * op.dag() for op in bit_flip_op])
+# Add noise: Correct Bit-flip error channel (independent on each qubit)
+p_flip = 0.1  # Probability of bit-flip (10%)
+single_bitflip = [np.sqrt(1 - p_flip) * qt.qeye(2), np.sqrt(p_flip) * qt.sigmax()]
+bit_flip_op = [qt.tensor(k1, k2) for k1 in single_bitflip for k2 in single_bitflip]
+
+# Apply the noise channel to the density matrix
+noisy_state = sum([op * rho * op.dag() for op in bit_flip_op])
 
 # Measurement: Measure in Z-basis to get probabilities of states
 # Probabilities for each outcome: |00>, |01>, |10>, |11>
@@ -98,4 +103,5 @@ b1.add_states(rho1)
 b1.render()
 b1.axes.set_title('Ampel 2 Bloch Sphere')
 
-plt.savefig('bloch_verkehr.png')  # Save for Git
+plt.savefig('bloch_verkehr.png')  # Save for GitHub Artifacts
+plt.show()  # Optional for local view
