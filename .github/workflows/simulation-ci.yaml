@@ -1,4 +1,4 @@
-name: Run Q-Simulation
+name: Q-Simulation CI
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install dependencies
-        run: pip install qutip numpy matplotlib
+        run: pip install qutip numpy matplotlib qutip-qip  # Hinzugefügt qutip-qip für Gates
       - name: Run Q-Simulation
         run: python Q-Simulation_verkehr.py
       - name: Upload Artifact
