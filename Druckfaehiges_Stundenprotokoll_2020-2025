@@ -1,0 +1,22 @@
+import pandas as pd
+
+# Lade Dateien
+df1 = pd.read_excel('Stundenprotokoll , Kalender 2020 bis 2025.xlsx', header=2)
+df2 = pd.read_excel('Stundenprotokoll 2020 bis 2025, 2.xlsx', header=0)
+
+# Kombiniere
+df = pd.concat([df1, df2], ignore_index=True)
+
+# Formeln (Tageskosten)
+df['Tageskosten'] = df['Arbeitsstunden'] * df['Stundenlohn']
+
+# Gesamtsummen
+total_hours = df['Arbeitsstunden'].sum()
+total_costs = df['Tageskosten'].sum()
+
+# Füge Summe hinzu
+df.loc[len(df)] = ['Gesamt', '', '', '', '', '', '', total_hours, '', total_costs, '']
+
+# Speichern
+df.to_excel('Gesamte_Formatierte_Protokoll.xlsx', index=False)
+print("Datei erstellt. Öffnen und als PDF speichern.")
