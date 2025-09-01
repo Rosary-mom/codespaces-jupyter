@@ -1,6 +1,6 @@
-qutip
-qutip-qip
-numpy
-scipy
-matplotlib
-ipywidgets
+qiskit==0.45.0
+qiskit-aer==0.13.0  # For faster classical simulation of quantum circuits
+numpy==1.24.3
+matplotlib==3.7.2
+networkx==3.1  # Useful for traffic graphs if blending with sim
+# Avoid heavy extras like qiskit-ibm-runtime unless needed for cloud access
