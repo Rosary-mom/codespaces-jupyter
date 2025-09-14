@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super-Simulation Cockpit: Rosenkranz-Schlüssel mit War/Peace</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; color: #333; margin: 0; padding: 20px; }
+        .cockpit { max-width: 1200px; margin: auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #007bff; }
+        .section { margin-bottom: 30px; }
+        .slider-container { display: flex; flex-wrap: wrap; gap: 10px; }
+        #plot-img { display: block; width: 100%; height: auto; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #output { margin-top: 20px; font-weight: bold; color: #28a745; }
+        #war-peace { background: #ffcc00; padding: 15px; border-radius: 5px; }
+        #bloch-img { display: block; margin: auto; max-width: 100%; }
+        @media (max-width: 600px) { .cockpit { padding: 10px; } }
+    </style>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+</head>
+<body>
+    <div class="cockpit">
+        <h1>Super-Simulation Cockpit: Rosenkranz-Schlüssel mit War/Peace</h1>
+        <p>Gamescom 2025-Level: Steuere Quanten für Frieden (Plan A) oder Konflikt (Plan B). Unlocke Levels und High-Scores!</p>
+        
+        <div class="section">
+            <h2>Rosenkranz-Schlüssel (Plan A: Friedliche Optimierung)</h2>
+            <div class="slider-container"></div>
+            <button id="run-sim">Start Simulation</button>
+            <div id="output"></div>
+            <img id="plot-img" src="" alt="Plot" style="display:none;">
+            <img id="bloch-img" src="" alt="Bloch Sphere" style="display:none;">
+        </div>
+        
+        <div class="section" id="war-peace">
+            <h2>WarAgent Ergänzung (Plan B: Zweischneidiges Schwert)</h2>
+            <p>Simuliere globale Konflikte. Ergänze mit deinem Code für echte LLMs.</p>
+            <button id="simulate-war">WarAgent Demo Starten</button>
+            <div id="war-output"></div>
+        </div>
+    </div>
+
+    <script>
+        async function main() {
+            let pyodide = await loadPyodide();
+            try {
+                await pyodide.loadPackage(['numpy', 'matplotlib', 'micropip']);
+                await pyodide.runPythonAsync(`
+import micropip
+await micropip.install('qutip==5.0.4')  # Stabilere Version für Pyodide
+                `);
+            } catch (e) {
+                console.error('Paket-Laden fehlgeschlagen:', e);
+                document.getElementById('output').textContent = 'Fehler beim Laden der Pakete. Überprüfe Internet/Konsole.';
+            }
+
+            await pyodide.runPythonAsync(\`
+${your_qutip_code_here}  // Hier deinen vollständigen QuTiP-Code einfügen, den du geteilt hast
+\`);  // Dein QuTiP-Code als String
+
+            // Sliders (JS-simuliert, da ipywidgets in Pyodide begrenzt)
+            const sliders = [/* deine Sliders wie zuvor */];
+            // ... (wie in vorherigem Code, generiere Sliders)
+
+            document.getElementById('run-sim').addEventListener('click', async () => {
+                // Params sammeln, Simulation laufen lassen
+                const [imgBase64, blochBase64, meanQ] = await pyodide.runPythonAsync('simulate_and_get_images()');  // Ergänze Funktion in Py für Bloch-Return
+                document.getElementById('plot-img').src = \`data:image/png;base64,\${imgBase64}\`;
+                document.getElementById('plot-img').style.display = 'block';
+                document.getElementById('bloch-img').src = \`data:image/png;base64,\${blochBase64}\`;
+                document.getElementById('bloch-img').style.display = 'block';
+                // Score/Unlock-Logik wie in deinem Code
+            });
+
+            // WarAgent Demo
+            document.getElementById('simulate-war').addEventListener('click', () => {
+                // Simulierte Output (erweitere mit echtem Code)
+                document.getElementById('war-output').textContent = 'WarAgent: Simuliere Konflikt... Ergebnis: Frieden durch Diplomatie! Score: +20 (Ergänze LLM für Real).';
+                new Audio('https://freesound.org/data/previews/612/612095_5674468-lq.mp3').play();  // Optionaler Sound-Effekt
+            });
+        }
+        main();
+    </script>
+</body>
+</html>
