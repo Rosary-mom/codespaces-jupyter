@@ -18,6 +18,9 @@
         #plot-canvas { display: block; margin: auto; }
         #weather { text-align: center; font-size: 18px; margin-bottom: 20px; }
         #feedback { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
         @media (max-width: 600px) { .cockpit { padding: 10px; } }
         #planA { background: green; }
         #planB { background: red; }
@@ -37,11 +40,25 @@
             <button id="planA">Activate Plan A (Peace)</button>
             <button id="planB">Activate Plan B (Conflict)</button>
             <button id="run-sim">Start Simulation</button>
-            <button onclick="window.location.href='migration-simulation.html'">Migration Pattern Sim</button> <!-- Link to new sub-page -->
+            <button id="save-score">Save Score</button>
+            <button onclick="window.location.href='migration-simulation.html'">Migration Pattern Sim</button>
             <div id="output"></div>
             <canvas id="plot-canvas" width="400" height="200"></canvas>
             <div id="bloch-container"></div>
-            <div id="feedback"></div> <!-- New feedback for added elements -->
+            <div id="feedback"></div>
+            <h3>Ranking-Liste: Top Besucher-Scores</h3>
+            <table id="ranking-table">
+                <thead>
+                    <tr>
+                        <th>Rang</th>
+                        <th>Besucher (Fake-Name)</th>
+                        <th>Score</th>
+                        <th>Level</th>
+                        <th>Letzter Besuch</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
         
         <div class="section" id="war-peace">
@@ -133,6 +150,33 @@
         updateVector(0.5, 0.5, 1);
 
         let mode = 'peace'; // Default mode
+        let currentScore = 0;
+        let currentLevel = 1;
+
+        // Load rankings from localStorage or init with samples
+        let rankings = JSON.parse(localStorage.getItem('rankings')) || [
+            { name: 'User1', score: 0.85, level: 9, date: '2025-09-15' },
+            { name: 'User2', score: 0.72, level: 8, date: '2025-09-14' },
+            { name: 'User3', score: 0.65, level: 7, date: '2025-09-13' }
+        ];
+
+        function updateRankingTable() {
+            const tbody = document.querySelector('#ranking-table tbody');
+            tbody.innerHTML = '';
+            rankings.sort((a, b) => b.score - a.score); // Sort descending by score
+            rankings.forEach((entry, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${entry.name}</td>
+                    <td>${entry.score.toFixed(4)}</td>
+                    <td>${entry.level}</td>
+                    <td>${entry.date}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        updateRankingTable(); // Initial load
 
         // Plan A/B toggles
         document.getElementById('planA').addEventListener('click', () => {
@@ -181,14 +225,16 @@
             updateVector(x, y, z);
 
             const meanQ = expect.reduce((a, b) => a + b, 0) / expect.length;
-            document.getElementById('output').textContent = `Simulation complete! Mean Quantum Score: ${meanQ.toFixed(2)} (Unlock Level if >0.5?)`;
+            currentScore = Math.abs(meanQ); // Normalize to positive score 0-1
+            currentLevel = Math.floor(currentScore * 10) + 1; // Level 1-11
+            document.getElementById('output').textContent = `Simulation complete! Score: ${currentScore.toFixed(2)} | Level: ${currentLevel} (Unlock if >0.5?)`;
 
             // Added elements in feedback
             const feedback = document.getElementById('feedback');
             const inspector = 'geprüft – optimiert (Fallback bei Fehlern)';
             const energy = (mode === 'peace' ? -0.000013 : -0.00001 + Math.random() * 0.000003).toFixed(8);
             const config = mode === 'peace' ? '{0: 0, 1: 1, 2: 0, 3: 1}' : '{0: 1, 1: 0, 2: 1, 3: 0}';
-            const qFaktor = (0.75 * (mode === 'peace' ? 1 : 0.8) * meanQ).toFixed(4); // Weighted mean
+            const qFaktor = (0.75 * (mode === 'peace' ? 1 : 0.8) * currentScore).toFixed(4); // Weighted mean
             const assessment = 'Code läuft stabil (keine Syntax/Logic-Errors). Für echte QPU: Mit deinem Leap-Key in USP ~30-Sek-Hotspot (num_reads=100); erweitere für 1 Min mit mehr Reads. Pandas verarbeitet Big-Data fehlerfrei (z. B. 1000+ Rows). Der Test war erfolgreich – der Code ist produktionsreif!';
 
             feedback.innerHTML = `
@@ -197,6 +243,26 @@
                 <p><strong>Finaler Q-Faktor:</strong> ${qFaktor} (Mittel der aktivierten q_factors: (0.7 + 0.8)/2 = 0.75, gedämpft via Weighted Mean).</p>
                 <p><strong>Gesamteinschätzung:</strong> ${assessment}</p>
             `;
+        });
+
+        // Save score to rankings
+        document.getElementById('save-score').addEventListener('click', () => {
+            if (currentScore > 0) {
+                const name = prompt('Enter your fake name:', 'User' + Math.floor(Math.random() * 1000));
+                if (name) {
+                    rankings.push({
+                        name: name,
+                        score: currentScore,
+                        level: currentLevel,
+                        date: new Date().toISOString().split('T')[0]
+                    });
+                    localStorage.setItem('rankings', JSON.stringify(rankings));
+                    updateRankingTable();
+                    alert('Score saved to rankings!');
+                }
+            } else {
+                alert('Run a simulation first to get a score!');
+            }
         });
 
         // WarAgent Demo
