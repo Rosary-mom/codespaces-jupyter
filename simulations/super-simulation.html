@@ -17,14 +17,10 @@
         #war-peace { background: #ffcc00; padding: 15px; border-radius: 5px; }
         #bloch-img { display: block; margin: auto; max-width: 100%; }
         @media (max-width: 600px) { .cockpit { padding: 10px; } }
-    </style>
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script><head>
-    <!-- ... existing head content ... -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <style>
         #bloch-container { width: 400px; height: 400px; margin: 20px auto; } /* Basic container styling */
     </style>
-</head>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
     <div class="cockpit">
@@ -38,6 +34,7 @@
             <div id="output"></div>
             <img id="plot-img" src="" alt="Plot" style="display:none;">
             <img id="bloch-img" src="" alt="Bloch Sphere" style="display:none;">
+            <div id="bloch-container"></div> <!-- Interactive 3D Bloch here -->
         </div>
         
         <div class="section" id="war-peace">
@@ -62,7 +59,7 @@ await micropip.install('qutip==5.0.4')  # Stabilere Version für Pyodide
                 document.getElementById('output').textContent = 'Fehler beim Laden der Pakete. Überprüfe Internet/Konsole.';
             }
 
-            await pyodide.runPythonAsync(\`
+            await pyodide.runPythonAsync(`
 import qutip as qt
 import matplotlib.pyplot as plt
 import io
@@ -70,20 +67,18 @@ import base64
 import numpy as np
 
 def simulate_and_get_images():
-    # Simple quantum simulation: Rabi oscillation (expand for traffic: e.g., omega based on density/free-flow prob)
     sigma_z = qt.sigmaz()
     sigma_x = qt.sigmax()
-    omega = 1.0 * 2 * np.pi  # Rabi frequency (could tie to sliders, e.g., free_flow_prob * 2 * np.pi)
+    omega = 1.0 * 2 * np.pi
     
-    H = - omega / 2 * sigma_x  # Hamiltonian
+    H = - omega / 2 * sigma_x
     
-    psi0 = qt.basis(2, 0)  # Initial state |0> (congested)
+    psi0 = qt.basis(2, 0)
     
     times = np.linspace(0, 10, 100)
     options = qt.Options(store_states=True)
     result = qt.mesolve(H, psi0, times, c_ops=[], e_ops=[sigma_z], options=options)
     
-    # Plot expectation value (time evolution of flow state)
     fig, ax = plt.subplots()
     ax.plot(times, result.expect[0])
     ax.set_xlabel('Time')
@@ -96,11 +91,10 @@ def simulate_and_get_images():
     img_base64 = base64.b64encode(buf.read()).decode('utf-8')
     plt.close(fig)
     
-    # Bloch sphere visualization
     fig_bloch, ax_bloch = plt.subplots(1, 1, subplot_kw={'projection': '3d'}, figsize=(5,5))
     b = qt.Bloch(fig=fig_bloch, axes=ax_bloch)
     b.add_states(psi0)
-    b.add_states(result.states[-1])  # Final state (optimized flow)
+    b.add_states(result.states[-1])
     b.render()
     
     buf_bloch = io.BytesIO()
@@ -109,316 +103,96 @@ def simulate_and_get_images():
     bloch_base64 = base64.b64encode(buf_bloch.read()).decode('utf-8')
     plt.close(fig_bloch)
     
-    mean_q = np.mean(result.expect[0])  # Mean value as score (e.g., optimization level)
+    mean_q = np.mean(result.expect[0])
     
-    return img_base64, bloch_base64, mean_q  // Hier deinen vollständigen QuTiP-Code einfügen, den du geteilt hast
-\`);  // Dein QuTiP-Code als String
+    return img_base64, bloch_base64, mean_q
+`);
 
-            // Sliders (JS-simuliert, da ipywidgets in Pyodide begrenzt)
-            const sliders = [/* deine Sliders wie zuvor */];
-            // ... (wie in vorherigem Code, generiere Sliders)
+            // Generate sliders dynamically
+            const sliderContainer = document.querySelector('.slider-container');
+            const sliders = [
+                { id: 'omega', label: 'Rabi Frequency (Quantum Flip Rate)', min: 0.1, max: 2, value: 1, step: 0.1 },
+                { id: 'density', label: 'Traffic Density (1-10)', min: 1, max: 10, value: 5, step: 1 }
+            ];
 
+            sliders.forEach(sl => {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <label for="${sl.id}">${sl.label}: </label>
+                    <input type="range" id="${sl.id}" min="${sl.min}" max="${sl.max}" value="${sl.value}" step="${sl.step}">
+                    <span id="${sl.id}-value">${sl.value}</span>
+                `;
+                sliderContainer.appendChild(div);
+                document.getElementById(sl.id).addEventListener('input', (e) => {
+                    document.getElementById(`${sl.id}-value`).textContent = e.target.value;
+                });
+            });
+
+            // On run-sim click: Pass slider values to Python globals, then run sim
             document.getElementById('run-sim').addEventListener('click', async () => {
-                // Params sammeln, Simulation laufen lassen
-                const [imgBase64, blochBase64, meanQ] = await pyodide.runPythonAsync('simulate_and_get_images()');  // Ergänze Funktion in Py für Bloch-Return
-                document.getElementById('plot-img').src = \`data:image/png;base64,\${imgBase64}\`;
+                const omega = parseFloat(document.getElementById('omega').value);
+                const density = parseInt(document.getElementById('density').value);
+                
+                await pyodide.runPythonAsync(`
+                    global_omega = ${omega}
+                    global_density = ${density}
+                `);
+                
+                let result;
+                try {
+                    result = await pyodide.runPythonAsync('simulate_and_get_images()');
+                } catch (e) {
+                    console.error('Simulation error:', e);
+                    document.getElementById('output').textContent = 'Error: Check console.';
+                    return;
+                }
+                
+                const [imgBase64, blochBase64, meanQ] = result.toJs();
+                
+                document.getElementById('plot-img').src = `data:image/png;base64,${imgBase64}`;
                 document.getElementById('plot-img').style.display = 'block';
-                document.getElementById('bloch-img').src = \`data:image/png;base64,\${blochBase64}\`;
+                document.getElementById('bloch-img').src = `data:image/png;base64,${blochBase64}`;
                 document.getElementById('bloch-img').style.display = 'block';
-                // Score/Unlock-Logik wie in deinem Code
+                
+                document.getElementById('output').textContent = `Simulation complete! Mean Quantum Score: ${meanQ.toFixed(2)} (Unlock Level if >0.5?)`;
             });
 
             // WarAgent Demo
             document.getElementById('simulate-war').addEventListener('click', () => {
-                // Simulierte Output (erweitere mit echtem Code)
                 document.getElementById('war-output').textContent = 'WarAgent: Simuliere Konflikt... Ergebnis: Frieden durch Diplomatie! Score: +20 (Ergänze LLM für Real).';
-                new Audio('https://freesound.org/data/previews/612/612095_5674468-lq.mp3').play();  // Optionaler Sound-Effekt
+                new Audio('https://freesound.org/data/previews/612/612095_5674468-lq.mp3').play();
             });
+
+            // Init interactive Three.js Bloch
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer();
+            renderer.setSize(400, 400);
+            document.getElementById('bloch-container').appendChild(renderer.domElement);
+
+            const geometry = new THREE.SphereGeometry(1, 32, 32);
+            const material = new THREE.MeshBasicMaterial({ color: 0x0000ff, wireframe: true });
+            const sphere = new THREE.Mesh(geometry, material);
+            scene.add(sphere);
+
+            const axesHelper = new THREE.AxesHelper(1.5);
+            scene.add(axesHelper);
+
+            const vectorMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
+            const vectorPoints = [new THREE.Vector3(0,0,0), new THREE.Vector3(0.5, 0.5, 1)];
+            const vectorGeometry = new THREE.BufferGeometry().setFromPoints(vectorPoints);
+            const vectorLine = new THREE.Line(vectorGeometry, vectorMaterial);
+            scene.add(vectorLine);
+
+            camera.position.z = 3;
+            function animate() {
+                requestAnimationFrame(animate);
+                sphere.rotation.y += 0.01;
+                renderer.render(scene, camera);
+            }
+            animate();
         }
         main();
     </script>
 </body>
-</html>
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <title>Quanten-Verkehrssimulation (Tafel-Optimiert)</title>
-    <canvas id="trafficCanvas" width="600" height="400"></canvas><!-- Add this where you want the link, e.g., after the metrics paragraphs -->
-<p>Explore detailed quantum traffic simulations: <a href="quantum-traffic.html">Quantum Traffic Dashboard</a></p>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.0.0/math.js"></script>
-    <script src="https://quantumjavascript.app/q.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <style>
-        body { font-family: Arial; text-align: center; font-size: 24px; }
-        canvas { border: 1px solid #000; margin: 10px; width: 100%; }
-        #controls { margin: 20px; font-size: 30px; }
-        #blochContainer { display: flex; justify-content: center; }
-        #weather { font-size: 40px; color: blue; }
-        #tafelImage { margin: 20px auto; display: block; } /* Einzelne Tafel zentriert */
-        #tafelImage img { width: 600px; height: auto; border: 3px solid blue; box-shadow: 0 4px 8px rgba(0,0,0,0.2); } /* Hervorgehobene Darstellung */
-    </style>
-</head>
-<body>
-    <h1>Quanten-Verkehrssimulation</h1>
-    <div id="weather">Wetter in Bitz: Laden...</div>
-    <div id="controls">
-        <label for="probSlider">Freier Fluss-Prob (0-100%):</label>
-        <input type="range" id="probSlider" min="0" max="100" value="50">
-        <span id="probValue">50%</span><br>
-        <label for="densitySlider">Dichte (1-10):</label>
-        <input type="range" id="densitySlider" min="1" max="10" value="5">
-        <span id="densityValue">5</span><br>
-        <button id="startBtn">Start</button>
-        <button id="pauseBtn">Pause</button>
-        <button id="resetBtn">Reset</button>
-    </div>
-    <canvas id="roadCanvas" width="800" height="150"></canvas>
-    <canvas id="trafficChart" width="800" height="200"></canvas>
-    <div id="blochContainer" style="height: 200px;"></div>
-    <div id="status">Bereit</div>
-    <div id="speedDisplay" style="font-size: 50px; color: red;">Geschwindigkeit: 0 km/h</div>
-    <div id="flowDisplay" style="font-size: 50px;">Fluss: 0 Fahrzeuge/h</div>
-    <div id="tafelImage">
-        <img src="images/Bild2.png.jpg" alt="Blaue Welle und Bloch-Sphären">
-    </div><div id="bloch-container"></div>
-    <script>
-        let simRunning = false;
-        let animationFrame;
-        let time = 0;
-        let flowData = [];
-        let chart;
-        let cars = [];
-        let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        let blochScenes = [];
-        const apiKey = '035e68e3800487033e1042ee082a96f9'; /* Dein OpenWeatherMap-Key */
-        const city = 'Bitz,DE';
-        let roadLength = 800;
-        let cellSize = 10;
-        let vMax = 5;
-        let p = 0.3; // Initiale Verzögerungswahrscheinlichkeit
-        let density = 5;
-        let freeFlowProb = 0.5; // Initial 50%
-        let running = false;
-        const canvas = document.getElementById('roadCanvas');
-        const ctx = canvas.getContext('2d');
-        const status = document.getElementById('status');
-        const speedDisplay = document.getElementById('speedDisplay');
-        const flowDisplay = document.getElementById('flowDisplay');
-        const freeFlowProbSlider = document.getElementById('probSlider');
-        const freeFlowProbValue = document.getElementById('probValue');
-        const densitySlider = document.getElementById('densitySlider');
-        const densityValue = document.getElementById('densityValue');
-        const startBtn = document.getElementById('startBtn');
-        const pauseBtn = document.getElementById('pauseBtn');
-        const resetBtn = document.getElementById('resetBtn');
-
-        // Wetter fetchen
-        function fetchWeather() {
-            fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`)
-                .then(response => {
-                    if (!response.ok) throw new Error('API-Fehler: ' + response.status);
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.cod !== 200) throw new Error(data.message);
-                    const temp = data.main.temp;
-                    const rain = data.rain ? data.rain['1h'] : 0;
-                    const icon = data.weather[0].icon;
-                    document.getElementById('weather').innerHTML = `Temp: ${temp}°C | Regen: ${rain}mm | <img src="http://openweathermap.org/img/w/${icon}.png">`;
-                    if (rain > 0) document.getElementById('weather').style.color = 'red';
-                })
-                .catch(error => {
-                    console.error('Wetter-Error:', error);
-                    document.getElementById('weather').innerText = 'Wetter konnte nicht geladen werden.';
-                });
-        }
-        setInterval(fetchWeather, 3600000);
-        fetchWeather();
-
-        // Slider-Event-Listener
-        freeFlowProbSlider.addEventListener('input', () => {
-            freeFlowProb = parseFloat(freeFlowProbSlider.value) / 100;
-            freeFlowProbValue.textContent = `${freeFlowProbSlider.value}%`;
-            p = 1 - freeFlowProb;
-            if (!running) initCars();
-            console.log('Free Flow Prob updated to:', freeFlowProb);
-        });
-
-        densitySlider.addEventListener('input', () => {
-            density = parseInt(densitySlider.value);
-            densityValue.textContent = density;
-            if (!running) initCars();
-            console.log('Density updated to:', density);
-        });
-
-        // Traffic Functions
-        function initCars() {
-            cars = [];
-            for (let i = 0; i < density; i++) {
-                cars.push({ x: Math.floor(Math.random() * roadLength), v: Math.floor(Math.random() * vMax) + 1 });
-            }
-            cars.sort((a, b) => a.x - b.x);
-        }
-
-        function getDistanceToNextCar(car) {
-            let minDist = roadLength;
-            cars.forEach(other => {
-                if (other !== car) {
-                    let dist = (other.x - car.x + roadLength) % roadLength;
-                    if (dist < minDist) minDist = dist;
-                }
-            });
-            return minDist;
-        }
-
-        function updateCars() {
-            let totalSpeed = 0;
-            let flow = 0;
-            cars.forEach(car => {
-                let d = getDistanceToNextCar(car);
-                car.v = Math.min(car.v + 1, vMax, d - 1);
-                if (car.v > 0 && Math.random() < p) car.v--;
-                car.x = (car.x + car.v) % roadLength;
-                totalSpeed += car.v;
-                if (car.x + car.v >= roadLength) flow++;
-            });
-            speedDisplay.textContent = `Geschwindigkeit: ${Math.round(totalSpeed / cars.length || 0)} km/h`;
-            flowDisplay.textContent = `Fluss: ${flow} Fahrzeuge/h`;
-        }
-
-        function drawRoad() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = 'gray';
-            ctx.fillRect(0, 75, roadLength, 50);
-            ctx.fillStyle = 'red';
-            cars.forEach(car => {
-                ctx.fillRect(car.x, 90, cellSize, 20);
-            });
-        }
-
-        function animate() {
-            if (running) {
-                updateCars();
-                drawRoad();
-                updateChart(freeFlowProb);
-                requestAnimationFrame(animate);
-            }
-        }
-
-        // Button-Listener
-        startBtn.addEventListener('click', () => {
-            if (!running) {
-                running = true;
-                animate();
-                status.textContent = 'Läuft';
-                console.log('Simulation started');
-            }
-        });
-
-        pauseBtn.addEventListener('click', () => {
-            running = false;
-            status.textContent = 'Pausiert';
-            console.log('Simulation paused');
-        });
-
-        resetBtn.addEventListener('click', () => {
-            running = false;
-            cars = [];
-            initCars();
-            drawRoad();
-            status.textContent = 'Bereit';
-            speedDisplay.textContent = 'Geschwindigkeit: 0 km/h';
-            flowDisplay.textContent = 'Fluss: 0 Fahrzeuge/h';
-            console.log('Simulation reset');
-        });
-
-        // Chart
-        function initChart() {
-            const ctxChart = document.getElementById('trafficChart').getContext('2d');
-            chart = new Chart(ctxChart, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Fluss',
-                        data: [],
-                        borderColor: 'blue',
-                        fill: false
-                    }]
-                },
-                options: { scales: { y: { beginAtZero: true } } }
-            });
-        }
-
-        function updateChart(probFree) {
-            const currentFlow = cars.reduce((acc, car) => acc + car.v, 0) / cars.length * 60 + Math.sin(time / 10) * 20;
-            flowData.push(currentFlow);
-            if (flowData.length > 100) flowData.shift(); // Limit data points
-            chart.data.labels.push(time++);
-            chart.data.datasets[0].data = flowData;
-            chart.update();
-        }
-
-        // Bloch Sphere
-        function initBloch() {
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer();
-            renderer.setSize(200, 200);
-            document.getElementById('blochContainer').appendChild(renderer.domElement);
-            const geometry = new THREE.SphereGeometry(1, 32, 32);
-            const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
-            const sphere = new THREE.Mesh(geometry, material);
-            scene.add(sphere);
-            camera.position.z = 5;
-            function animateBloch() {
-                requestAnimationFrame(animateBloch);
-                sphere.rotation.x += 0.01;
-                sphere.rotation.y += 0.01;
-                renderer.render(scene, camera);
-            }
-            animateBloch();
-            blochScenes.push({ scene, camera, renderer });
-        }
-
-        // Initiale Aufrufe
-        initCars();
-        drawRoad();
-        initChart();
-        initBloch();
-    </script>
-</body><script>
-    // Basic Three.js Bloch Sphere setup
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000); // Square aspect
-    const renderer = new THREE.WebGLRenderer();
-    renderer.setSize(400, 400);
-    document.getElementById('bloch-container').appendChild(renderer.domElement);
-
-    // Sphere (wireframe for Bloch)
-    const geometry = new THREE.SphereGeometry(1, 32, 32);
-    const material = new THREE.MeshBasicMaterial({ color: 0x0000ff, wireframe: true });
-    const sphere = new THREE.Mesh(geometry, material);
-    scene.add(sphere);
-
-    // Axes (X red, Y green, Z blue)
-    const axesHelper = new THREE.AxesHelper(1.5);
-    scene.add(axesHelper);
-
-    // Qubit state vector (example: superposition, adjust for sim)
-    const vectorMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
-    const vectorPoints = [new THREE.Vector3(0,0,0), new THREE.Vector3(0.5, 0.5, 1)]; // Sample state
-    const vectorGeometry = new THREE.BufferGeometry().setFromPoints(vectorPoints);
-    const vectorLine = new THREE.Line(vectorGeometry, vectorMaterial);
-    scene.add(vectorLine);
-
-    camera.position.z = 3;
-    function animate() {
-        requestAnimationFrame(animate);
-        sphere.rotation.y += 0.01; // Rotate for interactivity
-        renderer.render(scene, camera);
-    }
-    animate();
-</script>
 </html>
