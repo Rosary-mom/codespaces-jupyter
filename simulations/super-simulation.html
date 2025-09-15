@@ -19,7 +19,6 @@
         @media (max-width: 600px) { .cockpit { padding: 10px; } }
         #bloch-container { width: 400px; height: 400px; margin: 20px auto; } /* Basic container styling */
     </style>
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
@@ -32,8 +31,6 @@
             <div class="slider-container"></div>
             <button id="run-sim">Start Simulation</button>
             <div id="output"></div>
-            <img id="plot-img" src="" alt="Plot" style="display:none;">
-            <img id="bloch-img" src="" alt="Bloch Sphere" style="display:none;">
             <div id="bloch-container"></div> <!-- Interactive 3D Bloch here -->
         </div>
         
@@ -46,153 +43,86 @@
     </div>
 
     <script>
-        async function main() {
-            let pyodide = await loadPyodide();
-            try {
-                await pyodide.loadPackage(['numpy', 'matplotlib', 'micropip']);
-                await pyodide.runPythonAsync(`
-import micropip
-await micropip.install('qutip==5.0.4')  # Stabilere Version für Pyodide
-                `);
-            } catch (e) {
-                console.error('Paket-Laden fehlgeschlagen:', e);
-                document.getElementById('output').textContent = 'Fehler beim Laden der Pakete. Überprüfe Internet/Konsole.';
-            }
+        // Generate sliders dynamically
+        const sliderContainer = document.querySelector('.slider-container');
+        const sliders = [
+            { id: 'omega', label: 'Rabi Frequency (Quantum Flip Rate)', min: 0.1, max: 2, value: 1, step: 0.1 },
+            { id: 'density', label: 'Traffic Density (1-10)', min: 1, max: 10, value: 5, step: 1 }
+        ];
 
-            await pyodide.runPythonAsync(`
-import qutip as qt
-import matplotlib.pyplot as plt
-import io
-import base64
-import numpy as np
-
-def simulate_and_get_images():
-    sigma_z = qt.sigmaz()
-    sigma_x = qt.sigmax()
-    omega = 1.0 * 2 * np.pi
-    
-    H = - omega / 2 * sigma_x
-    
-    psi0 = qt.basis(2, 0)
-    
-    times = np.linspace(0, 10, 100)
-    options = qt.Options(store_states=True)
-    result = qt.mesolve(H, psi0, times, c_ops=[], e_ops=[sigma_z], options=options)
-    
-    fig, ax = plt.subplots()
-    ax.plot(times, result.expect[0])
-    ax.set_xlabel('Time')
-    ax.set_ylabel('<sigma_z> (Flow Metric)')
-    ax.set_title('Quantum Traffic Oscillation')
-    
-    buf = io.BytesIO()
-    fig.savefig(buf, format='png')
-    buf.seek(0)
-    img_base64 = base64.b64encode(buf.read()).decode('utf-8')
-    plt.close(fig)
-    
-    fig_bloch, ax_bloch = plt.subplots(1, 1, subplot_kw={'projection': '3d'}, figsize=(5,5))
-    b = qt.Bloch(fig=fig_bloch, axes=ax_bloch)
-    b.add_states(psi0)
-    b.add_states(result.states[-1])
-    b.render()
-    
-    buf_bloch = io.BytesIO()
-    fig_bloch.savefig(buf_bloch, format='png', bbox_inches='tight')
-    buf_bloch.seek(0)
-    bloch_base64 = base64.b64encode(buf_bloch.read()).decode('utf-8')
-    plt.close(fig_bloch)
-    
-    mean_q = np.mean(result.expect[0])
-    
-    return img_base64, bloch_base64, mean_q
-`);
-
-            // Generate sliders dynamically
-            const sliderContainer = document.querySelector('.slider-container');
-            const sliders = [
-                { id: 'omega', label: 'Rabi Frequency (Quantum Flip Rate)', min: 0.1, max: 2, value: 1, step: 0.1 },
-                { id: 'density', label: 'Traffic Density (1-10)', min: 1, max: 10, value: 5, step: 1 }
-            ];
-
-            sliders.forEach(sl => {
-                const div = document.createElement('div');
-                div.innerHTML = `
-                    <label for="${sl.id}">${sl.label}: </label>
-                    <input type="range" id="${sl.id}" min="${sl.min}" max="${sl.max}" value="${sl.value}" step="${sl.step}">
-                    <span id="${sl.id}-value">${sl.value}</span>
-                `;
-                sliderContainer.appendChild(div);
-                document.getElementById(sl.id).addEventListener('input', (e) => {
-                    document.getElementById(`${sl.id}-value`).textContent = e.target.value;
-                });
+        sliders.forEach(sl => {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <label for="${sl.id}">${sl.label}: </label>
+                <input type="range" id="${sl.id}" min="${sl.min}" max="${sl.max}" value="${sl.value}" step="${sl.step}">
+                <span id="${sl.id}-value">${sl.value}</span>
+            `;
+            sliderContainer.appendChild(div);
+            document.getElementById(sl.id).addEventListener('input', (e) => {
+                document.getElementById(`${sl.id}-value`).textContent = e.target.value;
             });
+        });
 
-            // On run-sim click: Pass slider values to Python globals, then run sim
-            document.getElementById('run-sim').addEventListener('click', async () => {
-                const omega = parseFloat(document.getElementById('omega').value);
-                const density = parseInt(document.getElementById('density').value);
-                
-                await pyodide.runPythonAsync(`
-                    global_omega = ${omega}
-                    global_density = ${density}
-                `);
-                
-                let result;
-                try {
-                    result = await pyodide.runPythonAsync('simulate_and_get_images()');
-                } catch (e) {
-                    console.error('Simulation error:', e);
-                    document.getElementById('output').textContent = 'Error: Check console.';
-                    return;
-                }
-                
-                const [imgBase64, blochBase64, meanQ] = result.toJs();
-                
-                document.getElementById('plot-img').src = `data:image/png;base64,${imgBase64}`;
-                document.getElementById('plot-img').style.display = 'block';
-                document.getElementById('bloch-img').src = `data:image/png;base64,${blochBase64}`;
-                document.getElementById('bloch-img').style.display = 'block';
-                
-                document.getElementById('output').textContent = `Simulation complete! Mean Quantum Score: ${meanQ.toFixed(2)} (Unlock Level if >0.5?)`;
-            });
+        // Init interactive Three.js Bloch
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(400, 400);
+        document.getElementById('bloch-container').appendChild(renderer.domElement);
 
-            // WarAgent Demo
-            document.getElementById('simulate-war').addEventListener('click', () => {
-                document.getElementById('war-output').textContent = 'WarAgent: Simuliere Konflikt... Ergebnis: Frieden durch Diplomatie! Score: +20 (Ergänze LLM für Real).';
-                new Audio('https://freesound.org/data/previews/612/612095_5674468-lq.mp3').play();
-            });
+        const geometry = new THREE.SphereGeometry(1, 32, 32);
+        const material = new THREE.MeshBasicMaterial({ color: 0x0000ff, wireframe: true });
+        const sphere = new THREE.Mesh(geometry, material);
+        scene.add(sphere);
 
-            // Init interactive Three.js Bloch
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer();
-            renderer.setSize(400, 400);
-            document.getElementById('bloch-container').appendChild(renderer.domElement);
+        const axesHelper = new THREE.AxesHelper(1.5);
+        scene.add(axesHelper);
 
-            const geometry = new THREE.SphereGeometry(1, 32, 32);
-            const material = new THREE.MeshBasicMaterial({ color: 0x0000ff, wireframe: true });
-            const sphere = new THREE.Mesh(geometry, material);
-            scene.add(sphere);
-
-            const axesHelper = new THREE.AxesHelper(1.5);
-            scene.add(axesHelper);
-
+        let vectorLine; // Will be updated on sim run
+        function updateVector(x, y, z) {
+            if (vectorLine) scene.remove(vectorLine);
             const vectorMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
-            const vectorPoints = [new THREE.Vector3(0,0,0), new THREE.Vector3(0.5, 0.5, 1)];
+            const vectorPoints = [new THREE.Vector3(0,0,0), new THREE.Vector3(x, y, z)];
             const vectorGeometry = new THREE.BufferGeometry().setFromPoints(vectorPoints);
-            const vectorLine = new THREE.Line(vectorGeometry, vectorMaterial);
+            vectorLine = new THREE.Line(vectorGeometry, vectorMaterial);
             scene.add(vectorLine);
-
-            camera.position.z = 3;
-            function animate() {
-                requestAnimationFrame(animate);
-                sphere.rotation.y += 0.01;
-                renderer.render(scene, camera);
-            }
-            animate();
         }
-        main();
+
+        camera.position.z = 3;
+        function animate() {
+            requestAnimationFrame(animate);
+            sphere.rotation.y += 0.01;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Initial vector
+        updateVector(0.5, 0.5, 1);
+
+        // On run-sim click: Simulate quantum state update based on sliders
+        document.getElementById('run-sim').addEventListener('click', () => {
+            const omega = parseFloat(document.getElementById('omega').value);
+            const density = parseInt(document.getElementById('density').value);
+
+            // Simple "simulation": Compute Bloch coords from sliders (e.g., theta = omega * pi, phi = density * pi/5)
+            const theta = omega * Math.PI; // Flip angle
+            const phi = (density / 5) * Math.PI; // Phase from density
+            const x = Math.sin(theta) * Math.cos(phi);
+            const y = Math.sin(theta) * Math.sin(phi);
+            const z = Math.cos(theta);
+
+            updateVector(x, y, z);
+
+            // Mock mean_q score (e.g., z-component as optimization level)
+            const meanQ = z;
+            document.getElementById('output').textContent = `Simulation complete! Mean Quantum Score: ${meanQ.toFixed(2)} (Unlock Level if >0.5?)`;
+        });
+
+        // WarAgent Demo
+        document.getElementById('simulate-war').addEventListener('click', () => {
+            document.getElementById('war-output').textContent = 'WarAgent: Simuliere Konflikt... Ergebnis: Frieden durch Diplomatie! Score: +20 (Ergänze LLM für Real).';
+            new Audio('https://freesound.org/data/previews/612/612095_5674468-lq.mp3').play();
+        });
     </script>
 </body>
 </html>
