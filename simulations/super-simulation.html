@@ -388,5 +388,37 @@ def simulate_and_get_images():
         initChart();
         initBloch();
     </script>
-</body>
+</body><script>
+    // Basic Three.js Bloch Sphere setup
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000); // Square aspect
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(400, 400);
+    document.getElementById('bloch-container').appendChild(renderer.domElement);
+
+    // Sphere (wireframe for Bloch)
+    const geometry = new THREE.SphereGeometry(1, 32, 32);
+    const material = new THREE.MeshBasicMaterial({ color: 0x0000ff, wireframe: true });
+    const sphere = new THREE.Mesh(geometry, material);
+    scene.add(sphere);
+
+    // Axes (X red, Y green, Z blue)
+    const axesHelper = new THREE.AxesHelper(1.5);
+    scene.add(axesHelper);
+
+    // Qubit state vector (example: superposition, adjust for sim)
+    const vectorMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
+    const vectorPoints = [new THREE.Vector3(0,0,0), new THREE.Vector3(0.5, 0.5, 1)]; // Sample state
+    const vectorGeometry = new THREE.BufferGeometry().setFromPoints(vectorPoints);
+    const vectorLine = new THREE.Line(vectorGeometry, vectorMaterial);
+    scene.add(vectorLine);
+
+    camera.position.z = 3;
+    function animate() {
+        requestAnimationFrame(animate);
+        sphere.rotation.y += 0.01; // Rotate for interactivity
+        renderer.render(scene, camera);
+    }
+    animate();
+</script>
 </html>
