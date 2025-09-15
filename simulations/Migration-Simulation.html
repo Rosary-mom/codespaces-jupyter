@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Migration-Simulation: Mit D-Wave & X-Datenby ROSARY©® 2025ff </title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style> body { margin: 0; } canvas { display: block; } .controls { position: absolute; top: 10px; left: 10px; background: white; padding: 10px; } #feedback { position: absolute; bottom: 10px; left: 10px; background: white; padding: 10px; } </style>
+</head>
+<body>
+    <div class="controls">
+        <label>Q-Faktor (D-Wave-optimiert): <input type="range" id="qSlider" min="0.1" max="1.5" step="0.1" value="0.618"></label><br>
+        <label>Rosenkranz-Modulus: <input type="range" id="modSlider" min="50" max="200" step="10" value="108"></label><br>
+        <label>Herdengröße: <input type="number" id="herdSize" value="500000"></label><br>
+        <button onclick="simulate()">Simulation starten</button>
+    </div>
+    <div id="feedback">Starte...</div>
+    
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        camera.position.z = 20;
+
+        // Simulierte X-Daten (erweitere mit realem JSON)
+        const xData = [
+            {id: 0, engagement: 0, herd: 500000, event: 'Remigration als Kreislauf'},
+            {id: 3, engagement: 12, herd: 1000000, event: 'Voting-Patterns'},
+            {id: 7, engagement: 0, herd: 500000, event: 'Great Remigration'},
+            {id: 12, engagement: 5, herd: 750000, event: 'Natürliche Muster'}
+        ];
+
+        // D-Wave-Output laden (JSON aus Python)
+        let qOptFromDWave = 0.618;  // Fallback
+        fetch('dwave_output.json').then(r => r.json()).then(data => qOptFromDWave = data.q_opt).catch(() => console.log('Fallback JSON used'));
+
+        function gaussSum(n) { return n * (n + 1) / 2; }
+
+        function simulate() {
+            const q = parseFloat(document.getElementById('qSlider').value);
+            const mod = parseInt(document.getElementById('modSlider').value);
+            const herd = parseInt(document.getElementById('herdSize').value);
+            
+            let totalEngagement = xData.reduce((sum, post) => sum + post.engagement, 0);
+            const basePoints = gaussSum(Math.min(herd / 10000, 100) + totalEngagement);
+            const scaledPoints = Math.round((q * qOptFromDWave) * basePoints);
+            
+            scene.children = []; // Clear
+            const particles = new THREE.BufferGeometry();
+            const positions = new Float32Array(3000);
+            for (let i = 0; i < 3000; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 10 * q;
+                positions[i+1] = Math.sin(i / mod * 2 * Math.PI) * 5;
+                positions[i+2] = Math.cos(i / mod * 2 * Math.PI) * 5 + (xData[Math.floor(i/300) % xData.length].engagement / 10);
+            }
+            particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const material = new THREE.PointsMaterial({ color: 0xffa500, size: 0.1 });
+            const herdMesh = new THREE.Points(particles, material);
+            scene.add(herdMesh);
+
+            let narrative = `Migration: ${herd} in Zyklen (D-Wave q_opt=${qOptFromDWave.toFixed(4)}).<br>`;
+            narrative += `Punkte: ${scaledPoints} (Gauss + X).<br>`;
+            xData.forEach(post => narrative += `${post.event}: Engagement ${post.engagement}<br>`);
+            narrative += 'Natürliche Remigration als Muster!';
+            document.getElementById('feedback').innerHTML = narrative;
+
+            renderer.render(scene, camera);
+        }
+
+        function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
+        animate();
+    </script>
+</body>
+</html>
