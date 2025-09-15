@@ -57,7 +57,55 @@ await micropip.install('qutip==5.0.4')  # Stabilere Version für Pyodide
             }
 
             await pyodide.runPythonAsync(\`
-${your_qutip_code_here}  // Hier deinen vollständigen QuTiP-Code einfügen, den du geteilt hast
+import qutip as qt
+import matplotlib.pyplot as plt
+import io
+import base64
+import numpy as np
+
+def simulate_and_get_images():
+    # Simple quantum simulation: Rabi oscillation (expand for traffic: e.g., omega based on density/free-flow prob)
+    sigma_z = qt.sigmaz()
+    sigma_x = qt.sigmax()
+    omega = 1.0 * 2 * np.pi  # Rabi frequency (could tie to sliders, e.g., free_flow_prob * 2 * np.pi)
+    
+    H = - omega / 2 * sigma_x  # Hamiltonian
+    
+    psi0 = qt.basis(2, 0)  # Initial state |0> (congested)
+    
+    times = np.linspace(0, 10, 100)
+    options = qt.Options(store_states=True)
+    result = qt.mesolve(H, psi0, times, c_ops=[], e_ops=[sigma_z], options=options)
+    
+    # Plot expectation value (time evolution of flow state)
+    fig, ax = plt.subplots()
+    ax.plot(times, result.expect[0])
+    ax.set_xlabel('Time')
+    ax.set_ylabel('<sigma_z> (Flow Metric)')
+    ax.set_title('Quantum Traffic Oscillation')
+    
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png')
+    buf.seek(0)
+    img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+    plt.close(fig)
+    
+    # Bloch sphere visualization
+    fig_bloch, ax_bloch = plt.subplots(1, 1, subplot_kw={'projection': '3d'}, figsize=(5,5))
+    b = qt.Bloch(fig=fig_bloch, axes=ax_bloch)
+    b.add_states(psi0)
+    b.add_states(result.states[-1])  # Final state (optimized flow)
+    b.render()
+    
+    buf_bloch = io.BytesIO()
+    fig_bloch.savefig(buf_bloch, format='png', bbox_inches='tight')
+    buf_bloch.seek(0)
+    bloch_base64 = base64.b64encode(buf_bloch.read()).decode('utf-8')
+    plt.close(fig_bloch)
+    
+    mean_q = np.mean(result.expect[0])  # Mean value as score (e.g., optimization level)
+    
+    return img_base64, bloch_base64, mean_q  // Hier deinen vollständigen QuTiP-Code einfügen, den du geteilt hast
 \`);  // Dein QuTiP-Code als String
 
             // Sliders (JS-simuliert, da ipywidgets in Pyodide begrenzt)
