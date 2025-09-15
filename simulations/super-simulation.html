@@ -10,27 +10,34 @@
         h1 { text-align: center; color: #007bff; }
         .section { margin-bottom: 30px; }
         .slider-container { display: flex; flex-wrap: wrap; gap: 10px; }
-        #plot-img { display: block; width: 100%; height: auto; border: 1px solid #ddd; border-radius: 5px; }
-        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
         button:hover { background: #0056b3; }
         #output { margin-top: 20px; font-weight: bold; color: #28a745; }
         #war-peace { background: #ffcc00; padding: 15px; border-radius: 5px; }
-        #bloch-img { display: block; margin: auto; max-width: 100%; }
+        #bloch-container { width: 400px; height: 400px; margin: 20px auto; }
+        #plot-canvas { display: block; margin: auto; }
+        #weather { text-align: center; font-size: 18px; margin-bottom: 20px; }
         @media (max-width: 600px) { .cockpit { padding: 10px; } }
-        #bloch-container { width: 400px; height: 400px; margin: 20px auto; } /* Basic container styling */
+        #planA { background: green; }
+        #planB { background: red; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="cockpit">
         <h1>Super-Simulation Cockpit: Rosenkranz-Schlüssel©® mit War/Peace</h1>
         <p>Gamescom 2025-Level: Steuere Quanten für Frieden (Plan A) oder Konflikt (Plan B). Unlocke Levels und High-Scores!</p>
+        <div id="weather">Wetter in Bitz: Laden...</div>
         
         <div class="section">
             <h2>Rosenkranz-Schlüssel (Plan A: Friedliche Optimierung)</h2>
             <div class="slider-container"></div>
+            <button id="planA">Activate Plan A (Peace)</button>
+            <button id="planB">Activate Plan B (Conflict)</button>
             <button id="run-sim">Start Simulation</button>
             <div id="output"></div>
+            <canvas id="plot-canvas" width="400" height="200"></canvas>
             <div id="bloch-container"></div> <!-- Interactive 3D Bloch here -->
         </div>
         
@@ -43,6 +50,18 @@
     </div>
 
     <script>
+        // Weather fetch
+        const apiKey = '035e68e3800487033e1042ee082a96f9';
+        function fetchWeather() {
+            fetch(`https://api.openweathermap.org/data/2.5/weather?lat=48.24&lon=9.46&appid=${apiKey}&units=metric`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('weather').textContent = `Wetter in Bitz: ${data.weather[0].description}, ${data.main.temp}°C`;
+                })
+                .catch(() => document.getElementById('weather').textContent = 'Wetter: Error loading');
+        }
+        fetchWeather();
+
         // Generate sliders dynamically
         const sliderContainer = document.querySelector('.slider-container');
         const sliders = [
@@ -63,6 +82,17 @@
             });
         });
 
+        // Init Chart.js for plot
+        const chartCtx = document.getElementById('plot-canvas').getContext('2d');
+        const chart = new Chart(chartCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{ label: 'Flow Metric (<sigma_z>)', data: [], borderColor: 'blue', fill: false }]
+            },
+            options: { scales: { y: { beginAtZero: true } } }
+        });
+
         // Init interactive Three.js Bloch
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
@@ -78,7 +108,7 @@
         const axesHelper = new THREE.AxesHelper(1.5);
         scene.add(axesHelper);
 
-        let vectorLine; // Will be updated on sim run
+        let vectorLine;
         function updateVector(x, y, z) {
             if (vectorLine) scene.remove(vectorLine);
             const vectorMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
@@ -99,22 +129,55 @@
         // Initial vector
         updateVector(0.5, 0.5, 1);
 
-        // On run-sim click: Simulate quantum state update based on sliders
-        document.getElementById('run-sim').addEventListener('click', () => {
-            const omega = parseFloat(document.getElementById('omega').value);
-            const density = parseInt(document.getElementById('density').value);
+        let mode = 'peace'; // Default mode
 
-            // Simple "simulation": Compute Bloch coords from sliders (e.g., theta = omega * pi, phi = density * pi/5)
-            const theta = omega * Math.PI; // Flip angle
-            const phi = (density / 5) * Math.PI; // Phase from density
+        // Plan A/B toggles
+        document.getElementById('planA').addEventListener('click', () => {
+            mode = 'peace';
+            document.body.style.backgroundColor = '#90EE90'; // Green for peace
+            document.getElementById('output').textContent = 'Plan A activated: Optimized for peace.';
+        });
+
+        document.getElementById('planB').addEventListener('click', () => {
+            mode = 'conflict';
+            document.body.style.backgroundColor = '#FF4500'; // Red for conflict
+            document.getElementById('output').textContent = 'Plan B activated: Simulating conflict.';
+        });
+
+        // On run-sim click: Simulate quantum state update based on sliders and mode
+        document.getElementById('run-sim').addEventListener('click', () => {
+            let omega = parseFloat(document.getElementById('omega').value);
+            let density = parseInt(document.getElementById('density').value);
+
+            if (mode === 'conflict') {
+                omega += Math.random() * 0.5 - 0.25; // Add randomness for disruption
+            }
+
+            // Simulate time evolution for plot (Rabi oscillation: cos(omega * t))
+            const times = Array.from({length: 100}, (_, i) => i / 10);
+            let expect = times.map(t => Math.cos(omega * t));
+            if (mode === 'conflict') {
+                expect = expect.map(v => v + (Math.random() * 0.4 - 0.2)); // Noisy for conflict
+            }
+
+            chart.data.labels = times;
+            chart.data.datasets[0].data = expect;
+            chart.update();
+
+            // Final state for Bloch (theta = omega * max_time = omega * 10)
+            let theta = omega * 10;
+            let phi = (density / 5) * Math.PI;
+            if (mode === 'conflict') {
+                theta += Math.random() * Math.PI / 2; // Disrupt angle
+                phi += Math.random() * Math.PI / 2;
+            }
             const x = Math.sin(theta) * Math.cos(phi);
             const y = Math.sin(theta) * Math.sin(phi);
             const z = Math.cos(theta);
 
             updateVector(x, y, z);
 
-            // Mock mean_q score (e.g., z-component as optimization level)
-            const meanQ = z;
+            const meanQ = expect.reduce((a, b) => a + b, 0) / expect.length;
             document.getElementById('output').textContent = `Simulation complete! Mean Quantum Score: ${meanQ.toFixed(2)} (Unlock Level if >0.5?)`;
         });
 
