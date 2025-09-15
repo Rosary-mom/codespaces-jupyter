@@ -18,7 +18,13 @@
         #bloch-img { display: block; margin: auto; max-width: 100%; }
         @media (max-width: 600px) { .cockpit { padding: 10px; } }
     </style>
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script><head>
+    <!-- ... existing head content ... -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        #bloch-container { width: 400px; height: 400px; margin: 20px auto; } /* Basic container styling */
+    </style>
+</head>
 </head>
 <body>
     <div class="cockpit">
