@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verfeinerte Gamifizierte Simulation: Re-Migration bis 2050 & Volkshygiene mit Umweltauswirkungen</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        .container { max-width: 1200px; margin: auto; }
+        .slider { width: 100%; margin: 10px 0; }
+        .output { font-weight: bold; }
+        button { padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background: #f2f2f2; }
+        .badge { padding: 5px 10px; border-radius: 5px; color: white; }
+        .stable { background: green; }
+        .boom { background: blue; }
+        .collapse { background: red; }
+        .risk { background: orange; }
+        .green { background: limegreen; }
+        #chart, #iqHealthChart, #envChart, #waterChart, #mobilisationChart { margin: 20px 0; }
+        .comparison { margin: 20px 0; padding: 10px; background: #e0f7fa; border: 1px solid #00acc1; }
+        .level { margin: 20px 0; font-size: 1.2em; }
+        .map-section { margin: 20px 0; }
+        .map-section img { max-width: 100%; height: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Verfeinerte Gamifizierte Simulation: Re-Migration bis 2050 & Volkshygiene mit Umweltauswirkungen</h1>
+        <p>Integriert Re-Migration (inspiriert von migrant-chart) mit Polygynie, Gesundheit/IQ-Stabilisierung durch Heterosis vs. Degeneration, Subsidien (wie Riester), Umweltauswirkungen (CO2 + Wasser) und daily green mobilisation (E-Bike, Walking, Bus mit Wetter-Gamification). Fokus auf Deutschland, andere Länder wählbar.</p>
+        
+        <!-- Sliders -->
+        <label>Startpopulation: <span id="startPopVal">83000000</span></label>
+        <input type="range" class="slider" id="startPop" min="10000" max="500000000" value="83000000">
+
+        <label>Fertilität Monogamie: <span id="fertMonoVal">1.5</span></label>
+        <input type="range" class="slider" id="fertMono" min="1.0" max="3.0" step="0.1" value="1.5">
+
+        <label>Fertilität Poly: <span id="fertPolyVal">2.5</span></label>
+        <input type="range" class="slider" id="fertPoly" min="1.0" max="4.0" step="0.1" value="2.5">
+
+        <label>Adoption Basis (%): <span id="adoptBaseVal">5</span></label>
+        <input type="range" class="slider" id="adoptBase" min="0" max="20" value="5">
+
+        <label>Adoption Hoch (%): <span id="adoptHighVal">10</span></label>
+        <input type="range" class="slider" id="adoptHigh" min="0" max="20" value="10">
+
+        <label>Generationen: <span id="gensVal">10</span></label>
+        <input type="range" class="slider" id="gens" min="1" max="20" value="10">
+
+        <label>Künstliche Befruchtung Boost: <span id="aiFertVal">1.5</span></label>
+        <input type="range" class="slider" id="aiFert" min="1.0" max="2.0" step="0.1" value="1.5">
+
+        <label>Re-Migration Rate bis 2050 (% Reduktion): <span id="reMigVal">50</span></label>
+        <input type="range" class="slider" id="reMig" min="0" max="100" value="50">
+
+        <label>Inzucht-Reduktion (%): <span id="inzuchtRedVal">20</span></label>
+        <input type="range" class="slider" id="inzuchtRed" min="0" max="50" value="20">
+
+        <label>Heterosis-Boost: <span id="heterosisVal">1.2</span></label>
+        <input type="range" class="slider" id="heterosis" min="1.0" max="1.5" step="0.1" value="1.2">
+
+        <label>Subsidien-Boost (z.B. Riester): <span id="subsidyVal">1.2</span></label>
+        <input type="range" class="slider" id="subsidy" min="1.0" max="1.5" step="0.1" value="1.2">
+
+        <label>Polyandrie-Modus (0=Polygynie, 1=Polyandrie): <span id="polyandryVal">0</span></label>
+        <input type="range" class="slider" id="polyandry" min="0" max="1" step="1" value="0">
+
+        <label>Initialer Ursprungsanteil (%): <span id="originShareVal">70</span></label>
+        <input type="range" class="slider" id="originShare" min="50" max="90" value="70">
+
+        <label>CO2 per Capita (Tonnen/Jahr): <span id="co2PerCapVal">4.1</span></label>
+        <input type="range" class="slider" id="co2PerCap" min="1" max="20" step="0.1" value="4.1">
+
+        <label>Wasser per Capita (m³/Jahr): <span id="waterPerCapVal">1300</span></label>
+        <input type="range" class="slider" id="waterPerCap" min="500" max="10000" step="100" value="1300">
+
+        <label>E-Bike Anteil an Traffic (%): <span id="ebikeShareVal">30</span></label>
+        <input type="range" class="slider" id="ebikeShare" min="0" max="100" value="30">
+
+        <label>Walking Anteil an Traffic (%): <span id="walkingShareVal">20</span></label>
+        <input type="range" class="slider" id="walkingShare" min="0" max="100" value="20">
+
+        <label>Bus Anteil an Traffic (%): <span id="busShareVal">20</span></label>
+        <input type="range" class="slider" id="busShare" min="0" max="100" value="20">
+
+        <label>Wetter-Impact-Faktor (0.5=schlechtes Wetter reduziert Mobilisation): <span id="weatherImpactVal">0.8</span></label>
+        <input type="range" class="slider" id="weatherImpact" min="0.5" max="1.0" step="0.1" value="0.8">
+
+        <label>Land: </label>
+        <select id="country">
+            <option value="DE">Deutschland (83M, 70% Ursprung, CO2 ~4.1, Wasser ~1300)</option>
+            <option value="US">USA (340M, 59% Weiß, CO2 ~14.9, Wasser ~8844)</option>
+            <option value="SE">Schweden (10.5M, 80% Ursprung, CO2 ~3.5, Wasser ~20000)</option>
+        </select>
+
+        <button id="simulateBtn">Simulieren!</button>
+        
+        <!-- Tabelle -->
+        <table id="resultTable"></table>
+        
+        <!-- Charts -->
+        <canvas id="populationChart" width="800" height="400"></canvas>
+        <canvas id="iqHealthChart" width="800" height="400"></canvas>
+        <canvas id="envChart" width="800" height="400"></canvas>
+        <canvas id="waterChart" width="800" height="400"></canvas>
+        <canvas id="mobilisationChart" width="800" height="400"></canvas>
+        
+        <!-- Score & Level -->
+        <div id="score" class="level"></div>
+        
+        <!-- Download -->
+        <button id="downloadBtn">Tabelle als CSV downloaden</button>
+        
+        <!-- Biodiversitäts-Maps (Prof. Dr. Ulrich Köpke Referenz) -->
+        <div class="map-section">
+            <h2>Biodiversitätsauswirkungen: Landkarten der CIS-Alpinen Ökosysteme</h2>
+            <p>Referenz: Prof. Dr. Ulrich Köpke, ehem. Leiter Landespflege, Uni Bonn. Lade eigene Maps hoch (z.B. in /maps/). Beispiel-Karten aus Quellen:</p>
+            <img src="https://www.researchgate.net/profile/Christoph-Leuschner/publication/367294981/figure/fig1/AS:11431281115267698@1670609396657/Map-of-Germany-categorized-by-seven-ecoregions-left-Bundesamt-fuer-Naturschutz-BfN.png" alt="Ecoregions Map Germany" style="max-width: 50%;">
+            <iframe src="https://www.alpconv.org/fileadmin/user_upload/Publications/25maps.pdf" width="800" height="400" title="Alpine Maps PDF"></iframe>
+            <a href="https://www.uni-bonn.de/en/research-and-teaching/research-profile/transdisciplinary-research-areas/individuals-people-and-societies/ips-profiles/koepke" target="_blank">Mehr zu Prof. Köpke's Arbeit</a>
+        </div>
+        
+        <!-- Vergleich -->
+        <div class="comparison">
+            <h2>Hinweise zu Umweltauswirkungen & Volkshygiene</h2>
+            <p>Fiktiv: Re-Migration reduziert Inzucht-Risiken, stabilisiert IQ (Heterosis-Boost). Subsidien (wie Riester) machen Modelle persistent. Daily Green Mobilisation: Gamifiziert Traffic (E-Bike, Walking, Bus) mit Wetterdaten für nachhaltigen Transport.</p>
+        </div>
+    </div>
+
+    <script>
+        // Globale Konstanten und Variablen
+        const DEFAULTS = {
+            startPop: 83000000,
+            fertMono: 1.5,
+            fertPoly: 2.5,
+            adoptBase: 5,
+            adoptHigh: 10,
+            gens: 10,
+            aiFert: 1.5,
+            reMig: 50,
+            inzuchtRed: 20,
+            heterosis: 1.2,
+            subsidy: 1.2,
+            polyandry: 0,
+            originShare: 70,
+            co2PerCap: 4.1,
+            waterPerCap: 1300,
+            ebikeShare: 30,
+            walkingShare: 20,
+            busShare: 20,
+            weatherImpact: 0.8
+        };
+
+        let myChart, iqHealthChart, envChart, waterChart, mobilisationChart;
+
+        // Initialisiere Sliders und Listener
+        function initSliders() {
+            const sliders = document.querySelectorAll('.slider');
+            sliders.forEach(slider => {
+                const valId = slider.id + 'Val';
+                const valSpan = document.getElementById(valId);
+                if (valSpan) valSpan.innerText = slider.value;
+                slider.addEventListener('input', () => {
+                    valSpan.innerText = slider.value;
+                });
+            });
+
+            document.getElementById('country').addEventListener('change', updateCountryDefaults);
+            document.getElementById('simulateBtn').addEventListener('click', simulate);
+            document.getElementById('downloadBtn').addEventListener('click', downloadCSV);
+        }
+
+        function updateCountryDefaults() {
+            const country = document.getElementById('country').value;
+            const startPopSlider = document.getElementById('startPop');
+            const co2Slider = document.getElementById('co2PerCap');
+            const waterSlider = document.getElementById('waterPerCap');
+            const originSlider = document.getElementById('originShare');
+            if (country === 'US') {
+                startPopSlider.value = 340000000;
+                co2Slider.value = 14.9;
+                waterSlider.value = 8844;
+                originSlider.value = 59;
+            } else if (country === 'SE') {
+                startPopSlider.value = 10500000;
+                co2Slider.value = 3.5;
+                waterSlider.value = 20000;
+                originSlider.value = 80;
+            } else {
+                startPopSlider.value = 83000000;
+                co2Slider.value = 4.1;
+                waterSlider.value = 1300;
+                originSlider.value = 70;
+            }
+            updateVal('startPopVal', startPopSlider.value);
+            updateVal('co2PerCapVal', co2Slider.value);
+            updateVal('waterPerCapVal', waterSlider.value);
+            updateVal('originShareVal', originSlider.value);
+        }
+
+        function updateVal(id, val) {
+            document.getElementById(id).innerText = val;
+        }
+
+        // Wachstumsberechnung (Modularisiert)
+        function calculateGrowth(startPop, fert, adopt, extra = 1) {
+            let pop = [startPop];
+            let iq = [100];
+            let health = [80];
+            let origin = [Math.round(startPop * (parseFloat(document.getElementById('originShare').value) / 100))];
+            let co2 = [startPop * parseFloat(document.getElementById('co2PerCap').value) / 1000000];
+            let water = [startPop * parseFloat(document.getElementById('waterPerCap').value) / 1000000]; // Mio. m³
+            let greenScore = [0]; // Initial Green Mobilisation Score
+            const gens = parseInt(document.getElementById('gens').value);
+            const reMig = 1 - (parseFloat(document.getElementById('reMig').value) / 100);
+            const inzuchtRed = parseFloat(document.getElementById('inzuchtRed').value) / 100;
+            const heterosis = parseFloat(document.getElementById('heterosis').value);
+            const ebikeShare = parseFloat(document.getElementById('ebikeShare').value) / 100;
+            const walkingShare = parseFloat(document.getElementById('walkingShare').value) / 100;
+            const busShare = parseFloat(document.getElementById('busShare').value) / 100;
+            const weatherImpact = parseFloat(document.getElementById('weatherImpact').value);
+            for (let g = 1; g <= gens; g++) {
+                let baseGrowth = pop[g-1] * (fert / 2) * reMig;
+                let adoptAdd = baseGrowth * adopt;
+                let newPop = Math.round((baseGrowth + adoptAdd) * extra);
+                pop.push(newPop);
+                iq.push(iq[g-1] + (heterosis - 1) * 1 - (1 - inzuchtRed) * 0.5);
+                health.push(health[g-1] + inzuchtRed * 2);
+                origin.push(Math.round(origin[g-1] * (fert / 2) * extra * 0.99));
+                let envEff = (1 - inzuchtRed) * heterosis * reMig;
+                co2.push((newPop * parseFloat(document.getElementById('co2PerCap').value) / 1000000) * envEff);
+                water.push((newPop * parseFloat(document.getElementById('waterPerCap').value) / 1000000) * envEff);
+                let trafficShare = ebikeShare + walkingShare + busShare;
+                greenScore.push(trafficShare * weatherImpact * reMig * 100); // Score 0-100
+            }
+            return {pop, iq, health, origin, co2, water, greenScore};
+        }
+
+        // Tabelle bauen
+        function buildTable(mono, polyStd, polyPrimo, gens) {
+            let table = '<tr><th>Gen</th><th>Mono Pop</th><th>Mono IQ</th><th>Mono Health %</th><th>Mono CO2 (Mt)</th><th>Mono Wasser (Mio. m³)</th><th>Mono Green Score</th><th>Poly Std Pop</th><th>Poly Std IQ</th><th>Poly Std Health %</th><th>Poly Std CO2 (Mt)</th><th>Poly Std Wasser (Mio. m³)</th><th>Poly Std Green Score</th><th>Poly Primo Pop</th><th>Poly Primo IQ</th><th>Poly Primo Health %</th><th>Poly Primo CO2 (Mt)</th><th>Poly Primo Wasser (Mio. m³)</th><th>Poly Primo Green Score</th><th>Score</th></tr>';
+            for (let g = 0; g <= gens; g++) {
+                let score = 'Stabil';
+                let badgeClass = 'stable';
+                let growthRate = (polyPrimo.pop[g] / mono.pop[0]) * 100;
+                let co2Rate = polyPrimo.co2[g];
+                let waterRate = polyPrimo.water[g];
+                let greenRate = polyPrimo.greenScore[g];
+                if (growthRate > 200) { score = 'Boom - Volkshygiene-Optimiert!'; badgeClass = 'boom'; }
+                if (growthRate < 100) { score = 'Kollaps'; badgeClass = 'collapse'; }
+                if (polyPrimo.iq[g] < 100) { score += ' (Degenerationsrisiko)'; badgeClass = 'risk'; }
+                if (co2Rate < polyStd.co2[g] && waterRate < polyStd.water[g] && greenRate > 70) { score += ' (Grüner Boom)'; badgeClass = 'green'; }
+                table += `<tr><td>${g}</td><td>${mono.pop[g]}</td><td>${mono.iq[g]}</td><td>${mono.health[g]}</td><td>${mono.co2[g].toFixed(2)}</td><td>${mono.water[g].toFixed(2)}</td><td>${mono.greenScore[g].toFixed(2)}</td><td>${polyStd.pop[g]}</td><td>${polyStd.iq[g]}</td><td>${polyStd.health[g]}</td><td>${polyStd.co2[g].toFixed(2)}</td><td>${polyStd.water[g].toFixed(2)}</td><td>${polyStd.greenScore[g].toFixed(2)}</td><td>${polyPrimo.pop[g]}</td><td>${polyPrimo.iq[g]}</td><td>${polyPrimo.health[g]}</td><td>${polyPrimo.co2[g].toFixed(2)}</td><td>${polyPrimo.water[g].toFixed(2)}</td><td>${polyPrimo.greenScore[g].toFixed(2)}</td><td><span class="badge ${badgeClass}">${score}</span></td></tr>`;
+            }
+            document.getElementById('resultTable').innerHTML = table;
+        }
+
+        // Charts rendern (Modularisiert)
+        function renderCharts(mono, polyStd, polyPrimo, gens) {
+            const labels = Array.from({length: gens+1}, (_, i) => i);
+
+            // Population Chart
+            renderSingleChart('populationChart', 'line', labels, [
+                { label: 'Monogamie', data: mono.pop, borderColor: 'green' },
+                { label: 'Poly Std', data: polyStd.pop, borderColor: 'blue' },
+                { label: 'Poly Primo & Re-Mig', data: polyPrimo.pop, borderColor: 'red' }
+            ], myChart);
+
+            // IQ/Gesundheit Chart
+            renderSingleChart('iqHealthChart', 'line', labels, [
+                { label: 'Primo IQ', data: polyPrimo.iq, borderColor: 'purple' },
+                { label: 'Primo Health %', data: polyPrimo.health, borderColor: 'orange' }
+            ], iqHealthChart);
+
+            // Umwelt Chart (CO2)
+            renderSingleChart('envChart', 'line', labels, [
+                { label: 'Mono CO2 (Mt)', data: mono.co2, borderColor: 'brown' },
+                { label: 'Poly Primo CO2 (Mt)', data: polyPrimo.co2, borderColor: 'green' }
+            ], envChart);
+
+            // Wasser Chart
+            renderSingleChart('waterChart', 'line', labels, [
+                { label: 'Mono Wasser (Mio. m³)', data: mono.water, borderColor: 'blue' },
+                { label: 'Poly Primo Wasser (Mio. m³)', data: polyPrimo.water, borderColor: 'cyan' }
+            ], waterChart);
+
+            // Green Mobilisation Chart (neu)
+            renderSingleChart('mobilisationChart', 'line', labels, [
+                { label: 'Mono Green Score', data: mono.greenScore, borderColor: 'lime' },
+                { label: 'Poly Primo Green Score', data: polyPrimo.greenScore, borderColor: 'darkgreen' }
+            ], mobilisationChart);
+        }
+
+        function renderSingleChart(chartId, type, labels, datasets, chartVar) {
+            const ctx = document.getElementById(chartId).getContext('2d');
+            if (chartVar) chartVar.destroy();
+            chartVar = new Chart(ctx, {
+                type,
+                data: { labels, datasets },
+                options: { scales: { y: { beginAtZero: true } } }
+            });
+            return chartVar;
+        }
+
+        // Score und Level berechnen
+        function getScoreLevel(polyPrimo, startPop, reMig, polyStd) {
+            const gens = parseInt(document.getElementById('gens').value);
+            const level = reMig < 0.8 && polyPrimo.iq[gens] > 105 && polyPrimo.co2[gens] < polyStd.co2[gens] && polyPrimo.water[gens] < polyStd.water[gens] && polyPrimo.greenScore[gens] > 70 ? 'Volkshygiene-Meister: Persistent, Positiv & Grün!' : 'Basis Level';
+            document.getElementById('score').innerHTML = `<h3>${level} - Gesamtscore: ${polyPrimo.pop[gens] > startPop * 2 ? 'Boom!' : 'Stabil'}</h3>`;
+        }
+
+        // Haupt-Simulationsfunktion
+        function simulate() {
+            let startPop = parseInt(document.getElementById('startPop').value);
+            const country = document.getElementById('country').value;
+            const fertMono = parseFloat(document.getElementById('fertMono').value);
+            const fertPoly = parseFloat(document.getElementById('fertPoly').value);
+            const adoptBase = parseFloat(document.getElementById('adoptBase').value) / 100;
+            const adoptHigh = parseFloat(document.getElementById('adoptHigh').value) / 100;
+            const gens = parseInt(document.getElementById('gens').value);
+            const aiFert = parseFloat(document.getElementById('aiFert').value);
+            const reMig = 1 - (parseFloat(document.getElementById('reMig').value) / 100);
+            const inzuchtRed = parseFloat(document.getElementById('inzuchtRed').value) / 100;
+            const heterosis = parseFloat(document.getElementById('heterosis').value);
+            const subsidy = parseFloat(document.getElementById('subsidy').value);
+            const polyandry = parseInt(document.getElementById('polyandry').value);
+            const polyFactor = polyandry ? 1.1 : 1.2;
+            const stabilityFactor = 1.3 * aiFert * subsidy * heterosis * (1 + inzuchtRed);
+
+            const mono = calculateGrowth(startPop, fertMono, adoptBase, 1);
+            const polyStd = calculateGrowth(startPop, fertPoly, adoptBase, 1 / polyFactor);
+            const polyPrimo = calculateGrowth(startPop, fertPoly, adoptHigh, stabilityFactor / polyFactor);
+
+            buildTable(mono, polyStd, polyPrimo, gens);
+            renderCharts(mono, polyStd, polyPrimo, gens);
+            getScoreLevel(polyPrimo, startPop, reMig, polyStd);
+        }
+
+        // CSV-Download
+        function downloadCSV() {
+            const rows = Array.from(document.querySelectorAll('#resultTable tr'));
+            let csv = rows.map(row => Array.from(row.cells).map(cell => cell.innerText).join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'simulation.csv';
+            a.click();
+        }
+
+        // Initialisierung
+        initSliders();
+        updateCountryDefaults(); // Setze DE-Defaults beim Start
+    </script>
+</body>
+</html>
