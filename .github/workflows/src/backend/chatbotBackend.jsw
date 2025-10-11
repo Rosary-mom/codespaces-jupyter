@@ -1,0 +1,27 @@
+import { getSecret } from 'wix-secrets-backend';
+import { fetch } from 'wix-fetch';
+
+export async function triggerCETPsin(prompt) {  // Funktion für die Simulation
+    try {
+        const apiKey = await getSecret('XAI_API_KEY');  // Dein Secret-Name
+        const response = await fetch('https://api.x.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'grok-beta',  // Oder dein Modell
+                messages: [{ role: 'user', content: prompt || 'Simuliere Szenarien für die COP30 Klimakonferenz in Brasilien 2025!' }]
+            })
+        });
+        if (!response.ok) {
+            throw new Error('API-Anfrage fehlgeschlagen: ' + response.status);
+        }
+        const data = await response.json();
+        return data.choices[0].message.content;  // Rückgabe des API-Ergebnisses
+    } catch (error) {
+        console.error('Fehler beim Aufruf der xAI API:', error);
+        throw error;
+    }
+}
