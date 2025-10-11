@@ -1,0 +1,20 @@
+----- CLI crash report at 2025-10-11T08:30:44.632Z
+Error Trace
+FailedToIdentifyProgramFlow: FailedToIdentifyProgramFlow
+    at _Command.<anonymous> (/home/gitpod/.nvm/versions/node/v22.16.0/lib/node_modules/@wix/cli/src/program.ts:76:15)
+    at _Command.emit (node:events:518:28)
+    at _Command._parseCommand (/home/gitpod/.nvm/versions/node/v22.16.0/lib/node_modules/node_modules/commander/lib/command.js:1607:14)
+    at _Command.parseAsync (/home/gitpod/.nvm/versions/node/v22.16.0/lib/node_modules/node_modules/commander/lib/command.js:1104:16)
+    at <anonymous> (/home/gitpod/.nvm/versions/node/v22.16.0/lib/node_modules/@wix/cli/src/index.tsx:88:39)
+Error Info
+{}
+----- CLI crash report at 2025-10-11T08:31:03.529Z
+Error Trace
+FailedToIdentifyProgramFlow: FailedToIdentifyProgramFlow
+    at _Command.<anonymous> (/home/gitpod/.nvm/versions/node/v22.16.0/lib/node_modules/@wix/cli/src/program.ts:76:15)
+    at _Command.emit (node:events:518:28)
+    at _Command._parseCommand (/home/gitpod/.nvm/versions/node/v22.16.0/lib/node_modules/node_modules/commander/lib/command.js:1607:14)
+    at _Command.parseAsync (/home/gitpod/.nvm/versions/node/v22.16.0/lib/node_modules/node_modules/commander/lib/command.js:1104:16)
+    at <anonymous> (/home/gitpod/.nvm/versions/node/v22.16.0/lib/node_modules/@wix/cli/src/index.tsx:88:39)
+Error Info
+{}
