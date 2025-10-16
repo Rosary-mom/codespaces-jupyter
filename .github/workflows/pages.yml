@@ -1,4 +1,4 @@
-name: Build and Deploy to GitHub Pages,
+name: Build and Deploy to GitHub Pages
 
 on:
   push:
@@ -11,23 +11,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive  # Enable submodules
+          submodules: recursive
 
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: 3.1  # Adjust if needed
-
-      - name: Install dependencies
-        run: bundle install
-
-      - name: Build Jekyll
-        run: bundle exec jekyll build
+      # No Ruby/Jekyll steps needed for static deploy
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./_site
+          path: .  # Deploy root (or specify folder like ./public if needed)
 
   deploy:
     needs: build
