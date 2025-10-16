@@ -1,0 +1,3 @@
+[submodule "Rosary"]
+path = Rosary
+url = https://github.com/rosary-mom/Rosary.git  # Replace with actual submodule repo URL
