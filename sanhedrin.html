@@ -1,0 +1,55 @@
+# Zelle 1: Imports und Beispiel-Daten (Geniza-Fragmente)
+import requests
+from PIL import Image, ImageDraw, ImageFont
+import numpy as np
+from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
+from io import BytesIO
+
+# Beispiel-URLs (öffentliche Fragmente; ersetzen durch echte aus Cambridge oder Mainz)
+fragment_urls = {
+    'Ashkenazic_Mainz': 'https://example.com/mainz_fragment.jpg',  # Platzhalter; echte: Cambridge T-S oder Genizat Germania
+    'Oriental_Cairo': 'https://example.com/cairo_fragment.jpg'
+}
+
+def load_fragment(url):
+    response = requests.get(url)
+    return Image.open(BytesIO(response.content)).convert('L')  # Graustufen für Paläografie
+
+# Zelle 2: Paläografische Merkmals-Extraktion (einfache Stroke-Analyse)
+def extract_paleographic_features(img):
+    img_array = np.array(img)
+    # KMeans für Strich-Cluster (simuliert Buchstabenformen)
+    pixels = img_array.reshape(-1, 1)
+    kmeans = KMeans(n_clusters=3, random_state=42).fit(pixels)
+    stroke_width = np.std(img_array)  # Approximation der Strichstärke
+    aspect_ratio = img_array.shape[1] / img_array.shape[0]
+    return {'stroke_width': stroke_width, 'aspect_ratio': aspect_ratio, 'cluster_centers': kmeans.cluster_centers_}
+
+# Zelle 3: Klassifikation (Ashkenazic vs. Oriental) + Visualisierung
+features = {}
+for name, url in fragment_urls.items():
+    try:
+        img = load_fragment(url)
+        feats = extract_paleographic_features(img)
+        features[name] = feats
+        print(f"{name}: Stroke Width ≈ {feats['stroke_width']:.2f}, Aspect ≈ {feats['aspect_ratio']:.2f}")
+    except:
+        print(f"Beispiel für {name} (simuliert): Hohe Serifen → Ashkenazic (Rheinland)")
+
+# Visualisierung
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+# Hier echte Bilder plotten oder Placeholder
+axes[0].set_title("Ashkenazic Square Script (ShUM-Fragment, ca. 12. Jh.)")
+axes[1].set_title("Oriental Semi-Cursive (Cairo Geniza)")
+plt.show()
+
+# Zelle 4: Erweiterung mit LLM-Prompt für echte Analyse
+prompt = """
+Analysiere dieses hebräische Geniza-Fragment paläografisch:
+- Identifiziere Schrift-Typ (Ashkenazic/Oriental) und Modus (quadratisch/kursiv).
+- Datierungsschätzung basierend auf Alef-Form, Ligaturen.
+- Inhalt: Talmud, Piyyut oder magischer Text?
+- Verbindung zur jiddischen Tradition oder Sanhedrin-Halacha.
+"""
+print("LLM-Prompt für Fragment-Analyse:", prompt)
