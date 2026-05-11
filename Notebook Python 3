@@ -102,3 +102,26 @@ def train_model(model, train_loader, val_loader, epochs=25):
     return model
 
 model = train_model(model, train_loader, val_loader, epochs=25)
+model.eval()
+all_preds, all_labels = [], []
+
+with torch.no_grad():
+    for inputs, labels in val_loader:
+        inputs = inputs.to(device)
+        outputs = model(inputs)
+        _, preds = torch.max(outputs, 1)
+        all_preds.extend(preds.cpu().numpy())
+        all_labels.extend(labels.numpy())
+
+cm = confusion_matrix(all_labels, all_preds)
+plt.figure(figsize=(14, 12))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=classes, yticklabels=classes)
+plt.title('Confusion Matrix – Hebrew Fragment Classification')
+plt.xlabel('Predicted')
+plt.ylabel('True')
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
+print("\n📊 Classification Report:\n")
+print(classification_report(all_labels, all_preds, target_names=classes))
