@@ -78,3 +78,14 @@ train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=32)
 
 print(f"Train: {len(train_dataset)} | Val: {len(val_dataset)}")
+model = models.resnet18(pretrained=True)
+model.fc = nn.Linear(model.fc.in_features, len(classes))
+model = model.to(device)
+
+for param in model.parameters():
+    param.requires_grad = False
+for param in model.fc.parameters():
+    param.requires_grad = True
+
+optimizer = optim.Adam(model.fc.parameters(), lr=0.001)
+criterion = nn.CrossEntropyLoss()
