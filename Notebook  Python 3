@@ -40,3 +40,23 @@ plt.show()
 
 # Beispiel-Ausgabe: Durchschnittliche Q
 print(f"Durchschnittliche optimierte Q: {np.mean(Q_werte):.2f}")
+def classify_uploaded_fragment(image_path):
+    model = models.resnet18(pretrained=False)
+    model.fc = nn.Linear(model.fc.in_features, len(classes))
+    model.load_state_dict(torch.load('sanhedrin_hebrew_classifier.pth', map_location=device))
+    model.eval()
+    
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor()
+    ])
+    
+    img = transform(Image.open(image_path).convert('RGB')).unsqueeze(0).to(device)
+    with torch.no_grad():
+        output = model(img)
+        pred = torch.argmax(output, 1).item()
+    return classes[pred]
+
+# Beispiel:
+# result = classify_uploaded_fragment('mein_fragment.jpg')
+# print(result)
