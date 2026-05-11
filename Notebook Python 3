@@ -1,1 +1,24 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import models, transforms, datasets
+from torch.utils.data import DataLoader, random_split
+from PIL import Image
+import os
+import requests
+from io import BytesIO
+from sklearn.metrics import confusion_matrix, classification_report
+import seaborn as sns
+import matplotlib.pyplot as plt
+import numpy as np
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Device: {device}")
+
+classes = [
+    'Oriental_Square', 'Oriental_Semi', 'Oriental_Cursive',
+    'Ashkenazic_Square', 'Ashkenazic_Semi', 'Ashkenazic_Cursive',
+    'Sephardic_Square', 'Sephardic_Semi', 'Sephardic_Cursive',
+    'Italian_Square', 'Italian_Semi', 'Italian_Cursive',
+    'Byzantine_Semi', 'Yemenite_Square'
+]
