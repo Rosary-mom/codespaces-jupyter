@@ -60,3 +60,21 @@ def classify_uploaded_fragment(image_path):
 # Beispiel:
 # result = classify_uploaded_fragment('mein_fragment.jpg')
 # print(result)
+data_dir = 'geniza_patches'   # Pfad zu Ihren echten Fragmenten
+
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])
+
+full_dataset = datasets.ImageFolder(data_dir, transform=transform)
+train_size = int(0.8 * len(full_dataset))
+val_size = len(full_dataset) - train_size
+train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
+
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+val_loader = DataLoader(val_dataset, batch_size=32)
+
+print(f"Train: {len(train_dataset)} | Val: {len(val_dataset)}")
