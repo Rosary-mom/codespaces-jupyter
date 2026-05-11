@@ -1,0 +1,102 @@
+# Zelle 1: Imports und Setup (installiere bei Bedarf: !pip install torch torchvision Pillow)
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import models, transforms, datasets
+from torch.utils.data import DataLoader, Dataset
+from PIL import Image
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import classification_report
+import requests
+from io import BytesIO
+
+# 14 Klassen (Beit-Arié-Standard)
+classes = [
+    'Oriental_Square', 'Oriental_Semi', 'Oriental_Cursive',
+    'Ashkenazic_Square', 'Ashkenazic_Semi', 'Ashkenazic_Cursive',
+    'Sephardic_Square', 'Sephardic_Semi', 'Sephardic_Cursive',
+    'Italian_Square', 'Italian_Semi', 'Italian_Cursive',
+    'Byzantine_Semi', 'Yemenite_Square'
+]
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Zelle 2: Datensatz-Klasse (simuliert oder echte Geniza-Bilder laden)
+class GenizaFragmentDataset(Dataset):
+    def __init__(self, image_urls, labels, transform=None):
+        self.image_urls = image_urls
+        self.labels = labels
+        self.transform = transform or transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+    
+    def __len__(self):
+        return len(self.image_urls)
+    
+    def __getitem__(self, idx):
+        url = self.image_urls[idx]
+        response = requests.get(url)
+        img = Image.open(BytesIO(response.content)).convert('RGB')
+        if self.transform:
+            img = self.transform(img)
+        return img, self.labels[idx]
+
+# Beispiel-URLs (ersetzen durch echte aus Cambridge T-S oder Genizat Germania)
+example_urls = [
+    'https://example.com/ashkenazic_square_mainz.jpg',  # Aschkenasisch-quadratisch (ShUM)
+    'https://example.com/oriental_cursive_cairo.jpg'    # Orientalisch-kursiv (Kairo)
+]
+example_labels = [3, 2]  # Indizes aus classes-Liste
+
+dataset = GenizaFragmentDataset(example_urls, example_labels)
+dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
+
+# Zelle 3: Modell (ResNet18 fine-tuned auf 14 Klassen)
+model = models.resnet18(pretrained=True)
+model.fc = nn.Linear(model.fc.in_features, len(classes))
+model = model.to(device)
+
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+# Zelle 4: Training-Loop (5 Epochen als Demo; auf echte Daten erweitern)
+def train_model(model, dataloader, criterion, optimizer, num_epochs=5):
+    model.train()
+    for epoch in range(num_epochs):
+        running_loss = 0.0
+        for inputs, labels in dataloader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+        print(f'Epoch {epoch+1}/{num_epochs}, Loss: {running_loss/len(dataloader):.4f}')
+    return model
+
+model = train_model(model, dataloader, criterion, optimizer)
+
+# Zelle 5: Inference & Evaluation auf Geniza-Fragment
+model.eval()
+with torch.no_grad():
+    for inputs, labels in dataloader:
+        inputs = inputs.to(device)
+        outputs = model(inputs)
+        _, preds = torch.max(outputs, 1)
+        print(f"Predictions: {[classes[p] for p in preds]}")
+        print(classification_report(labels.cpu(), preds.cpu(), target_names=classes[:len(labels)]))
+
+# Zelle 6: Visualisierung + Verbindung zur Karte
+def visualize_classification(img_tensor, pred_class):
+    img = transforms.ToPILImage()(img_tensor.cpu().squeeze(0))
+    plt.imshow(img)
+    plt.title(f"Klassifiziert als: {pred_class} (Ashkenazic Square → ShUM-Fragment)")
+    plt.axis('off')
+    plt.show()
+
+# Beispiel-Inference auf neuem Fragment (z. B. Hamburger Geniza mit jiddischem Glossar)
+print("Deep Learning ermöglicht die automatische Zuordnung von Fragmenten zu den auf der Karte markierten Genizot und deckt jiddische Vorläufer in aschkenasischen Texten auf.")
