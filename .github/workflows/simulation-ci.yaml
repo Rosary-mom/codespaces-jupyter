@@ -3,22 +3,33 @@ name: Q-Simulation CI
 on:
   push:
     branches: [ "main" ]
+  pull_request:        # Bonus: läuft auch bei PRs
+    branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v5     # ← NEU: v5 (Node 24)
+
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6   # ← NEU: v6 (Node 24)
         with:
           python-version: '3.12'
+
       - name: Install dependencies
-        run: pip install qutip numpy matplotlib qutip-qip  # Hinzugefügt qutip-qip für Gates
+        run: |
+          python -m pip install --upgrade pip
+          pip install qutip numpy matplotlib qutip-qip
+
       - name: Run Q-Simulation
         run: python Q-Simulation_verkehr.py
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+
+      - name: Upload Artifact (Bloch Plot)
+        uses: actions/upload-artifact@v4   # v4 ist aktuell noch OK, aber wir bleiben bei v4 (wird automatisch gepatcht)
         with:
           name: bloch-plot
           path: bloch_verkehr_3q.png
+          retention-days: 30
